@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ערב בשרים - אישור הגעה</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --card: #111827;
+        --muted: #94a3b8;
+        --text: #e5e7eb;
+        --accent: #3b82f6;
+        --accent-2: #1d4ed8;
+        --ok: #16a34a;
+        --no: #dc2626;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: linear-gradient(135deg, #0b1022, #0f172a 30%, #0b1022);
+        font-family: "Heebo", "Rubik", "Segoe UI", system-ui, Arial, Helvetica,
+          sans-serif;
+        color: var(--text);
+      }
+      .wrap {
+        min-height: 100svh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(880px, 95vw);
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.04),
+          rgba(255, 255, 255, 0.02)
+        );
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(8px);
+        border-radius: 24px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+      }
+      header {
+        padding: 28px 28px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-weight: 800;
+        font-size: clamp(24px, 3vw, 32px);
+      }
+      .meta {
+        color: var(--muted);
+        margin-top: 6px;
+        font-size: 13px;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 18px;
+        padding: 24px;
+      }
+      @media (min-width: 720px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      label {
+        display: block;
+        font-weight: 700;
+        margin: 0 0 8px;
+      }
+      .field {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 14px;
+        padding: 14px 16px;
+        font-size: 16px;
+        color: var(--text);
+        outline: none;
+        transition: 0.2s box-shadow, 0.2s border;
+      }
+      .field:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+      }
+
+      .seg {
+        display: flex;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .seg button {
+        flex: 1;
+        padding: 12px;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+      }
+      .seg button[aria-pressed="true"] {
+        background: var(--accent);
+        color: white;
+      }
+      .seg .ok[aria-pressed="true"] {
+        background: var(--ok);
+      }
+      .seg .no[aria-pressed="true"] {
+        background: var(--no);
+      }
+
+      .row {
+        display: grid;
+        gap: 18px;
+        padding: 0 24px 24px;
+      }
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        appearance: none;
+        border: none;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: transform 0.06s ease, filter 0.2s, background 0.2s;
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn.primary {
+        background: linear-gradient(180deg, var(--accent), var(--accent-2));
+        color: white;
+      }
+      .btn.ghost {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: var(--text);
+      }
+
+      .note {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .toast {
+        position: fixed;
+        inset-inline: 0;
+        top: 14px;
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+      }
+      .toast .msg {
+        pointer-events: auto;
+        background: #0b1223;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #e6f0ff;
+        padding: 12px 16px;
+        border-radius: 12px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+      }
+
+      #adminPanel {
+        display: none;
+        padding: 24px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(3, 8, 23, 0.35);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border-radius: 14px;
+      }
+      th,
+      td {
+        padding: 12px 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        text-align: right;
+      }
+      th {
+        background: rgba(255, 255, 255, 0.06);
+      }
+      tr:hover td {
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .filters {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 0 0 12px;
+      }
+      .tag {
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+      }
+      .tag[aria-pressed="true"] {
+        background: var(--accent);
+        color: white;
+      }
+      .pill {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      footer {
+        padding: 18px 24px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      a {
+        color: #9ec5ff;
+      }
+      .danger {
+        color: #fca5a5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card" id="app">
+        <header>
+          <h1>ערב בשרים - אישור הגעה 🎉</h1>
+          <div class="meta">
+            18.11.2025 • מיקום: יגאל אלון 23 בני ברק קומה 4
+          </div>
+          <div class="sub">
+            מלאו את הפרטים הקצרים הבאים כדי לעזור לנו להתארגן הכי טוב שיש.
+          </div>
+        </header>
+
+        <form id="rsvpForm" class="grid">
+          <div>
+            <label for="firstName">שם פרטי</label>
+            <input
+              id="firstName"
+              class="field"
+              placeholder="למשל: נתי"
+              required
+            />
+          </div>
+          <div>
+            <label for="lastName">שם משפחה</label>
+            <input
+              id="lastName"
+              class="field"
+              placeholder="למשל: כהן"
+              required
+            />
+          </div>
+          <div>
+            <label>מגיע/ה?</label>
+            <div class="seg" role="group" aria-label="נוכחות">
+              <button
+                type="button"
+                class="ok"
+                data-attending="true"
+                aria-pressed="true"
+              >
+                מגיע/ה
+              </button>
+              <button
+                type="button"
+                class="no"
+                data-attending="false"
+                aria-pressed="false"
+              >
+                לא מגיע/ה
+              </button>
+            </div>
+          </div>
+          <div>
+            <label>העדפה קולינרית</label>
+            <div class="seg" role="group" aria-label="תפריט">
+              <button type="button" data-diet="omnivore" aria-pressed="true">
+                אוכלים בשר
+              </button>
+              <button type="button" data-diet="vegetarian" aria-pressed="false">
+                צמחוני/טבעוני
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <div class="row">
+          <div class="actions">
+            <button class="btn primary" id="submitBtn">שליחה</button>
+            <button class="btn ghost" id="adminBtn" type="button">
+              לוח ניהול (סיכומים)
+            </button>
+          </div>
+          <div class="note">
+            בלחיצה על "שליחה" הפרטים נשמרים במסד נתונים מאובטח (Supabase). אין
+            צורך להתחבר. <br /><span class="danger">לתשומת לב:</span> הנתונים
+            קריאים למי שמחזיק את הקישור. אל תכניסו מידע רגיש.
+          </div>
+        </div>
+
+        <section id="adminPanel">
+          <div class="filters">
+            <button class="tag" data-filter="all" aria-pressed="true">
+              הכול
+            </button>
+            <button class="tag" data-filter="yes">מגיעים</button>
+            <button class="tag" data-filter="no">לא מגיעים</button>
+            <span class="pill" id="countLabel"></span>
+          </div>
+          <div style="overflow: auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>תאריך</th>
+                  <th>שם</th>
+                  <th>שם משפחה</th>
+                  <th>מגיע/ה</th>
+                  <th>תפריט</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <footer>יוצר האתר נתנאל בן חיים</footer>
+        <footer>זכיות יוצרים</footer>
+      </div>
+    </div>
+    <div class="toast" id="toast" hidden>
+      <div class="msg" id="toastMsg">הודעה</div>
+    </div>
+
+    <script type="module">
+      const SUPABASE_URL = "https://xpmhjphezpdzgpvcsruk.supabase.co";
+      const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwbWhqcGhlenBkemdwdmNzcnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4MDE1ODksImV4cCI6MjA3ODM3NzU4OX0.YaGesydhmolHvLYTIYI9jUmyoRLQLtDR1UiGSz517Kk";
+      const ADMIN_PASSWORD = "Nbh525204!@#";
+      const TABLE = "rsvps";
+
+      const $ = (s, e = document) => e.querySelector(s);
+      const $$ = (s, e = document) => [...e.querySelectorAll(s)];
+      const toast = (m, t = 2200) => {
+        const b = $("#toast");
+        $("#toastMsg").textContent = m;
+        b.hidden = false;
+        setTimeout(() => (b.hidden = true), t);
+      };
+
+      function setupSeg(g) {
+        const bs = $$("button", g);
+        bs.forEach((b) =>
+          b.addEventListener("click", () => {
+            bs.forEach((x) => x.setAttribute("aria-pressed", "false"));
+            b.setAttribute("aria-pressed", "true");
+          })
+        );
+      }
+      $$(".seg").forEach(setupSeg);
+
+      const REST = `${SUPABASE_URL}/rest/v1/${TABLE}`;
+      const headers = {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      };
+
+      async function insertRow(p) {
+        const r = await fetch(REST, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(p),
+        });
+        if (!r.ok) throw new Error(`שגיאת שמירה: ${r.status}`);
+        return r.json();
+      }
+      async function selectAll() {
+        const u = new URL(REST);
+        u.searchParams.set("select", "*");
+        u.searchParams.set("order", "created_at.desc");
+        const r = await fetch(u, { headers });
+        if (!r.ok) throw new Error(`שגיאת קריאה: ${r.status}`);
+        return r.json();
+      }
+
+      $("#submitBtn").addEventListener("click", async (e) => {
+        e.preventDefault();
+        const first_name = $("#firstName").value.trim();
+        const last_name = $("#lastName").value.trim();
+        const attending =
+          $("[data-attending][aria-pressed='true']").dataset.attending ===
+          "true";
+        const diet = $("[data-diet][aria-pressed='true']").dataset.diet;
+        if (!first_name || !last_name) {
+          toast("נא למלא שם ושם משפחה");
+          return;
+        }
+        try {
+          await insertRow({ first_name, last_name, attending, diet });
+          toast("הפרטים נקלטו! תודה 💙");
+          $("#rsvpForm").reset();
+          $$("[data-attending]").forEach((b) =>
+            b.setAttribute("aria-pressed", "false")
+          );
+          $(`[data-attending='true']`).setAttribute("aria-pressed", "true");
+          $$("[data-diet]").forEach((b) =>
+            b.setAttribute("aria-pressed", "false")
+          );
+          $(`[data-diet='omnivore']`).setAttribute("aria-pressed", "true");
+        } catch {
+          toast("שגיאה בשמירה");
+        }
+      });
+
+      $("#adminBtn").addEventListener("click", async () => {
+        const pass = prompt("סיסמת מנהל:");
+        if (pass !== ADMIN_PASSWORD) {
+          toast("סיסמה שגויה");
+          return;
+        }
+        $("#adminPanel").style.display = "block";
+        const rows = await selectAll();
+        renderTable(rows);
+        updateCount(rows);
+      });
+
+      function updateCount(r) {
+        const y = r.filter((x) => x.attending).length;
+        $("#countLabel").textContent = `סה"כ ${r.length} | מגיעים ${y} | לא ${
+          r.length - y
+        }`;
+      }
+
+      function renderTable(r) {
+        $("#rows").innerHTML = r
+          .map(
+            (x) =>
+              `<tr><td>${new Date(x.created_at).toLocaleString("he-IL", {
+                dateStyle: "short",
+                timeStyle: "short",
+              })}</td><td>${x.first_name}</td><td>${x.last_name}</td><td>${
+                x.attending ? "מגיע/ה" : "לא מגיע/ה"
+              }</td><td>${
+                x.diet === "vegetarian" ? "צמחוני/טבעוני" : "אוכלים בשר"
+              }</td></tr>`
+          )
+          .join("");
+      }
+    </script>
+  </body>
+</html>
