@@ -406,11 +406,10 @@
       const ADMIN_PASSWORD = "Nbh525204!@#";
       const TABLE = "rsvps";
 
-      // ==== הגדרת מייל (EmailJS) — למלא לפי החשבון שלך ====
-      const EMAILJS_SERVICE_ID = ""; // למשל: "service_xxx"
-      const EMAILJS_TEMPLATE_ID = ""; // למשל: "template_xxx"
-      const EMAILJS_PUBLIC_KEY = ""; // למשל: "AbCdEf..."
-      const EMAIL_TO = "your@email.com"; // לשנות למייל שלך
+      // 🔔 טלגרם – הבוט שלך
+      const TELEGRAM_BOT_TOKEN =
+        "7757724360:AAGqnnerpqkZGYrJB8xEdmm_0PT45V-11Ng";
+      const TELEGRAM_CHAT_ID = 6785280427;
 
       const $ = (s, e = document) => e.querySelector(s);
       const $$ = (s, e = document) => [...e.querySelectorAll(s)];
@@ -489,40 +488,42 @@
         }
       }
 
-      async function sendEmailNotification(data) {
-        // אם לא הוגדר EmailJS – לדלג בשקט
-        if (
-          !EMAILJS_SERVICE_ID ||
-          !EMAILJS_TEMPLATE_ID ||
-          !EMAILJS_PUBLIC_KEY
-        ) {
-          console.info("EmailJS not configured; skipping email send.");
-          return;
-        }
+      // 🔔 שליחת התראה בטלגרם
+      async function sendTelegramNotification(data) {
+        if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+
+        const attendingText = data.attending ? "✅ מגיע/ה" : "❌ לא מגיע/ה";
+        const dietText =
+          data.diet === "vegetarian" ? "🥗 צמחוני/טבעוני" : "🍖 אוכלים בשר";
+        const groupLabel = mapGroupTypeLabel(data.group_type);
+        const kidsText = data.children_count
+          ? `${data.children_count}${
+              data.children_ages ? " (" + data.children_ages + ")" : ""
+            }`
+          : data.children_ages || "ללא";
+
+        const text =
+          "אישור הגעה חדש לערב בשרים:\n" +
+          `שם: ${data.first_name} ${data.last_name}\n` +
+          `${attendingText}\n` +
+          `תפריט: ${dietText}\n` +
+          `קבוצה: ${groupLabel}\n` +
+          `ילדים: ${kidsText}`;
+
         try {
-          const payload = {
-            service_id: EMAILJS_SERVICE_ID,
-            template_id: EMAILJS_TEMPLATE_ID,
-            user_id: EMAILJS_PUBLIC_KEY,
-            template_params: {
-              to_email: EMAIL_TO,
-              first_name: data.first_name,
-              last_name: data.last_name,
-              attending: data.attending ? "מגיע/ה" : "לא מגיע/ה",
-              diet:
-                data.diet === "vegetarian" ? "צמחוני/טבעוני" : "אוכלים בשר",
-              group_type: mapGroupTypeLabel(data.group_type),
-              children_count: data.children_count ?? "",
-              children_ages: data.children_ages ?? "",
-            },
-          };
-          await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-        } catch (e) {
-          console.error("Email send failed", e);
+          await fetch(
+            `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: TELEGRAM_CHAT_ID,
+                text,
+              }),
+            }
+          );
+        } catch (err) {
+          console.error("Telegram notification failed", err);
         }
       }
 
@@ -567,8 +568,9 @@
             children_count,
             children_ages,
           };
-          await insertRow(payload);
-          sendEmailNotification(payload); // לא חייב לחכות – אם ייכשל, לא מפיל את הטופס
+          await insertRow(payload);          // שמירה ב-Supabase
+          sendTelegramNotification(payload); // התראה בטלגרם
+
           toast("הפרטים נקלטו! תודה 💙");
           $("#rsvpForm").reset();
           $$("[data-attending]").forEach((b) =>
@@ -586,7 +588,8 @@
           childrenFields.style.display = "none";
           $("#childrenCount").value = "";
           $("#childrenAges").value = "";
-        } catch {
+        } catch (err) {
+          console.error(err);
           toast("שגיאה בשמירה");
         }
       });
@@ -605,7 +608,7 @@
 
       function updateCount(r) {
         const y = r.filter((x) => x.attending).length;
-        $("#countLabel").textContent = `סה\"כ ${r.length} | מגיעים ${y} | לא ${
+        $("#countLabel").textContent = `סה"כ ${r.length} | מגיעים ${y} | לא ${
           r.length - y
         }`;
       }
@@ -628,7 +631,9 @@
               <td>${x.first_name}</td>
               <td>${x.last_name}</td>
               <td>${x.attending ? "מגיע/ה" : "לא מגיע/ה"}</td>
-              <td>${x.diet === "vegetarian" ? "צמחוני/טבעוני" : "אוכלים בשר"}</td>
+              <td>${
+                x.diet === "vegetarian" ? "צמחוני/טבעוני" : "אוכלים בשר"
+              }</td>
               <td>${groupStr}</td>
               <td>${kidsStr}</td>
             </tr>`;
