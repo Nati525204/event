@@ -300,6 +300,54 @@
               </button>
             </div>
           </div>
+
+          <!-- תצורת ההגעה -->
+          <div>
+            <label>כמה אנשים מגיעים?</label>
+            <div class="seg" role="group" aria-label="תצורת הגעה">
+              <button type="button" data-group="single" aria-pressed="true">
+                יחיד
+              </button>
+              <button type="button" data-group="couple" aria-pressed="false">
+                זוג
+              </button>
+              <button type="button" data-group="couple1" aria-pressed="false">
+                זוג + ילד
+              </button>
+              <button type="button" data-group="coupleKids" aria-pressed="false">
+                זוג + ילדים
+              </button>
+            </div>
+          </div>
+
+          <!-- פרטי ילדים (מוצג רק במידת הצורך) -->
+          <div id="childrenFields" style="display: none">
+            <label>פרטי ילדים</label>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap">
+              <div style="flex: 1 1 120px">
+                <span style="display: block; font-size: 13px; margin-bottom: 4px"
+                  >מספר ילדים</span
+                >
+                <input
+                  id="childrenCount"
+                  type="number"
+                  min="1"
+                  class="field"
+                  placeholder="למשל: 2"
+                />
+              </div>
+              <div style="flex: 2 1 160px">
+                <span style="display: block; font-size: 13px; margin-bottom: 4px"
+                  >גילאים (מופרדים בפסיק)</span
+                >
+                <input
+                  id="childrenAges"
+                  class="field"
+                  placeholder="למשל: 3, 5, 9"
+                />
+              </div>
+            </div>
+          </div>
         </form>
 
         <div class="row">
@@ -334,6 +382,8 @@
                   <th>שם משפחה</th>
                   <th>מגיע/ה</th>
                   <th>תפריט</th>
+                  <th>קבוצה</th>
+                  <th>ילדים</th>
                 </tr>
               </thead>
               <tbody id="rows"></tbody>
@@ -342,7 +392,7 @@
         </section>
 
         <footer>יוצר האתר נתנאל בן חיים</footer>
-        <footer>זכיות יוצרים</footer>
+        <footer>זכויות יוצרים</footer>
       </div>
     </div>
     <div class="toast" id="toast" hidden>
@@ -355,6 +405,12 @@
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwbWhqcGhlenBkemdwdmNzcnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4MDE1ODksImV4cCI6MjA3ODM3NzU4OX0.YaGesydhmolHvLYTIYI9jUmyoRLQLtDR1UiGSz517Kk";
       const ADMIN_PASSWORD = "Nbh525204!@#";
       const TABLE = "rsvps";
+
+      // ==== הגדרת מייל (EmailJS) — למלא לפי החשבון שלך ====
+      const EMAILJS_SERVICE_ID = ""; // למשל: "service_xxx"
+      const EMAILJS_TEMPLATE_ID = ""; // למשל: "template_xxx"
+      const EMAILJS_PUBLIC_KEY = ""; // למשל: "AbCdEf..."
+      const EMAIL_TO = "your@email.com"; // לשנות למייל שלך
 
       const $ = (s, e = document) => e.querySelector(s);
       const $$ = (s, e = document) => [...e.querySelectorAll(s)];
@@ -375,6 +431,22 @@
         );
       }
       $$(".seg").forEach(setupSeg);
+
+      // הצגת/הסתרת שדות ילדים בהתאם לתצורה
+      const childrenFields = $("#childrenFields");
+      const groupButtons = $$("[data-group]");
+      groupButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const g = btn.dataset.group;
+          if (g === "couple1" || g === "coupleKids") {
+            childrenFields.style.display = "block";
+          } else {
+            childrenFields.style.display = "none";
+            $("#childrenCount").value = "";
+            $("#childrenAges").value = "";
+          }
+        });
+      });
 
       const REST = `${SUPABASE_URL}/rest/v1/${TABLE}`;
       const headers = {
@@ -402,6 +474,58 @@
         return r.json();
       }
 
+      function mapGroupTypeLabel(g) {
+        switch (g) {
+          case "single":
+            return "יחיד";
+          case "couple":
+            return "זוג";
+          case "couple1":
+            return "זוג + ילד";
+          case "coupleKids":
+            return "זוג + ילדים";
+          default:
+            return "";
+        }
+      }
+
+      async function sendEmailNotification(data) {
+        // אם לא הוגדר EmailJS – לדלג בשקט
+        if (
+          !EMAILJS_SERVICE_ID ||
+          !EMAILJS_TEMPLATE_ID ||
+          !EMAILJS_PUBLIC_KEY
+        ) {
+          console.info("EmailJS not configured; skipping email send.");
+          return;
+        }
+        try {
+          const payload = {
+            service_id: EMAILJS_SERVICE_ID,
+            template_id: EMAILJS_TEMPLATE_ID,
+            user_id: EMAILJS_PUBLIC_KEY,
+            template_params: {
+              to_email: EMAIL_TO,
+              first_name: data.first_name,
+              last_name: data.last_name,
+              attending: data.attending ? "מגיע/ה" : "לא מגיע/ה",
+              diet:
+                data.diet === "vegetarian" ? "צמחוני/טבעוני" : "אוכלים בשר",
+              group_type: mapGroupTypeLabel(data.group_type),
+              children_count: data.children_count ?? "",
+              children_ages: data.children_ages ?? "",
+            },
+          };
+          await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+        } catch (e) {
+          console.error("Email send failed", e);
+        }
+      }
+
       $("#submitBtn").addEventListener("click", async (e) => {
         e.preventDefault();
         const first_name = $("#firstName").value.trim();
@@ -410,12 +534,41 @@
           $("[data-attending][aria-pressed='true']").dataset.attending ===
           "true";
         const diet = $("[data-diet][aria-pressed='true']").dataset.diet;
+        const groupBtn = $("[data-group][aria-pressed='true']");
+        const group_type = groupBtn ? groupBtn.dataset.group : "single";
+
+        let children_count = null;
+        let children_ages = "";
+
+        if (group_type === "couple1" || group_type === "coupleKids") {
+          const countVal = $("#childrenCount").value.trim();
+          const agesVal = $("#childrenAges").value.trim();
+          if (group_type === "couple1" && !countVal) {
+            children_count = 1;
+          } else if (countVal) {
+            const parsed = parseInt(countVal, 10);
+            if (!Number.isNaN(parsed)) children_count = parsed;
+          }
+          children_ages = agesVal;
+        }
+
         if (!first_name || !last_name) {
           toast("נא למלא שם ושם משפחה");
           return;
         }
+
         try {
-          await insertRow({ first_name, last_name, attending, diet });
+          const payload = {
+            first_name,
+            last_name,
+            attending,
+            diet,
+            group_type,
+            children_count,
+            children_ages,
+          };
+          await insertRow(payload);
+          sendEmailNotification(payload); // לא חייב לחכות – אם ייכשל, לא מפיל את הטופס
           toast("הפרטים נקלטו! תודה 💙");
           $("#rsvpForm").reset();
           $$("[data-attending]").forEach((b) =>
@@ -426,6 +579,13 @@
             b.setAttribute("aria-pressed", "false")
           );
           $(`[data-diet='omnivore']`).setAttribute("aria-pressed", "true");
+          $$("[data-group]").forEach((b) =>
+            b.setAttribute("aria-pressed", "false")
+          );
+          $(`[data-group='single']`).setAttribute("aria-pressed", "true");
+          childrenFields.style.display = "none";
+          $("#childrenCount").value = "";
+          $("#childrenAges").value = "";
         } catch {
           toast("שגיאה בשמירה");
         }
@@ -445,24 +605,34 @@
 
       function updateCount(r) {
         const y = r.filter((x) => x.attending).length;
-        $("#countLabel").textContent = `סה"כ ${r.length} | מגיעים ${y} | לא ${
+        $("#countLabel").textContent = `סה\"כ ${r.length} | מגיעים ${y} | לא ${
           r.length - y
         }`;
       }
 
       function renderTable(r) {
         $("#rows").innerHTML = r
-          .map(
-            (x) =>
-              `<tr><td>${new Date(x.created_at).toLocaleString("he-IL", {
-                dateStyle: "short",
-                timeStyle: "short",
-              })}</td><td>${x.first_name}</td><td>${x.last_name}</td><td>${
-                x.attending ? "מגיע/ה" : "לא מגיע/ה"
-              }</td><td>${
-                x.diet === "vegetarian" ? "צמחוני/טבעוני" : "אוכלים בשר"
-              }</td></tr>`
-          )
+          .map((x) => {
+            const dateStr = new Date(x.created_at).toLocaleString("he-IL", {
+              dateStyle: "short",
+              timeStyle: "short",
+            });
+            const groupStr = mapGroupTypeLabel(x.group_type);
+            const kidsStr = x.children_count
+              ? `${x.children_count}${
+                  x.children_ages ? " (" + x.children_ages + ")" : ""
+                }`
+              : x.children_ages || "";
+            return `<tr>
+              <td>${dateStr}</td>
+              <td>${x.first_name}</td>
+              <td>${x.last_name}</td>
+              <td>${x.attending ? "מגיע/ה" : "לא מגיע/ה"}</td>
+              <td>${x.diet === "vegetarian" ? "צמחוני/טבעוני" : "אוכלים בשר"}</td>
+              <td>${groupStr}</td>
+              <td>${kidsStr}</td>
+            </tr>`;
+          })
           .join("");
       }
     </script>
