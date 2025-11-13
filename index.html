@@ -205,6 +205,7 @@
         gap: 12px;
         flex-wrap: wrap;
         margin: 0 0 12px;
+        align-items: center;
       }
       .tag {
         padding: 8px 12px;
@@ -240,11 +241,11 @@
     <div class="wrap">
       <div class="card" id="app">
         <header>
-          <h1>ערב בשרים - אישור הגעה 🎉</h1>
-          <div class="meta">
+          <h1 id="eventTitle">ערב בשרים - אישור הגעה 🎉</h1>
+          <div class="meta" id="eventMeta">
             18.11.2025 • מיקום: יגאל אלון 23 בני ברק קומה 4
           </div>
-          <div class="sub">
+          <div class="sub" id="eventSub">
             מלאו את הפרטים הקצרים הבאים כדי לעזור לנו להתארגן הכי טוב שיש.
           </div>
         </header>
@@ -372,6 +373,20 @@
             <button class="tag" data-filter="yes">מגיעים</button>
             <button class="tag" data-filter="no">לא מגיעים</button>
             <span class="pill" id="countLabel"></span>
+            <!-- כפתור איפוס -->
+            <button
+              class="btn ghost"
+              id="resetBtn"
+              type="button"
+              style="
+                margin-inline-start: auto;
+                background: #7f1d1d;
+                color: #fee2e2;
+                border-color: #fecaca;
+              "
+            >
+              איפוס כל ההזמנות לאירוע הזה
+            </button>
           </div>
           <div style="overflow: auto">
             <table>
@@ -403,13 +418,32 @@
       const SUPABASE_URL = "https://xpmhjphezpdzgpvcsruk.supabase.co";
       const SUPABASE_ANON_KEY =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwbWhqcGhlenBkemdwdmNzcnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4MDE1ODksImV4cCI6MjA3ODM3NzU4OX0.YaGesydhmolHvLYTIYI9jUmyoRLQLtDR1UiGSz517Kk";
-      const ADMIN_PASSWORD = "Nbh525204!@#";
       const TABLE = "rsvps";
 
-      // 🔔 טלגרם – הבוט שלך
+      // 🔔 טלגרם – הבוט שלך (עדיין גלובלי; אפשר בעתיד להחליף לפי פרמטרים ב-URL)
       const TELEGRAM_BOT_TOKEN =
         "7757724360:AAGqnnerpqkZGYrJB8xEdmm_0PT45V-11Ng";
       const TELEGRAM_CHAT_ID = 6785280427;
+
+      // ===== קריאת פרמטרים מה-URL לכל אירוע =====
+      const url = new URL(window.location.href);
+      // כל אירוע חייב קוד – אם לא העברת, נשתמש ב-DEMO (לאירועי בדיקה)
+      const EVENT_ID = url.searchParams.get("event") || "DEMO";
+      const EVENT_TITLE =
+        url.searchParams.get("title") || "ערב בשרים - אישור הגעה 🎉";
+      const EVENT_DATE = url.searchParams.get("date") || "18.11.2025";
+      const EVENT_PLACE =
+        url.searchParams.get("place") || "יגאל אלון 23 בני ברק קומה 4";
+      // סיסמת אדמין לאירוע הזה
+      const ADMIN_PASSWORD =
+        url.searchParams.get("admin") || "Nbh525204!@#";
+
+      // עדכון הטקסטים במסך לפי האירוע
+      const titleEl = document.getElementById("eventTitle");
+      const metaEl = document.getElementById("eventMeta");
+      if (titleEl) titleEl.textContent = EVENT_TITLE;
+      if (metaEl)
+        metaEl.textContent = `${EVENT_DATE} • מיקום: ${EVENT_PLACE}`;
 
       const $ = (s, e = document) => e.querySelector(s);
       const $$ = (s, e = document) => [...e.querySelectorAll(s)];
@@ -464,10 +498,13 @@
         if (!r.ok) throw new Error(`שגיאת שמירה: ${r.status}`);
         return r.json();
       }
+
       async function selectAll() {
         const u = new URL(REST);
         u.searchParams.set("select", "*");
         u.searchParams.set("order", "created_at.desc");
+        // רק ההזמנות של האירוע הזה
+        u.searchParams.set("event_id", "eq." + EVENT_ID);
         const r = await fetch(u, { headers });
         if (!r.ok) throw new Error(`שגיאת קריאה: ${r.status}`);
         return r.json();
@@ -503,7 +540,8 @@
           : data.children_ages || "ללא";
 
         const text =
-          "אישור הגעה חדש לערב בשרים:\n" +
+          `אישור הגעה חדש לאירוע: ${EVENT_TITLE}\n` +
+          `קוד אירוע: ${EVENT_ID}\n` +
           `שם: ${data.first_name} ${data.last_name}\n` +
           `${attendingText}\n` +
           `תפריט: ${dietText}\n` +
@@ -527,6 +565,7 @@
         }
       }
 
+      // 📝 שליחת הטופס
       $("#submitBtn").addEventListener("click", async (e) => {
         e.preventDefault();
         const first_name = $("#firstName").value.trim();
@@ -560,6 +599,7 @@
 
         try {
           const payload = {
+            event_id: EVENT_ID, // 👈 קישור לאירוע
             first_name,
             last_name,
             attending,
@@ -568,8 +608,8 @@
             children_count,
             children_ages,
           };
-          await insertRow(payload);          // שמירה ב-Supabase
-          sendTelegramNotification(payload); // התראה בטלגרם
+          await insertRow(payload); // שמירה ב-Supabase
+          sendTelegramNotification(payload); // התראה בטלגרם (לא חובה להמתין)
 
           toast("הפרטים נקלטו! תודה 💙");
           $("#rsvpForm").reset();
@@ -594,21 +634,67 @@
         }
       });
 
+      // 🔐 פתיחת לוח ניהול לאירוע
       $("#adminBtn").addEventListener("click", async () => {
-        const pass = prompt("סיסמת מנהל:");
+        const pass = prompt("סיסמת מנהל עבור האירוע הזה:");
         if (pass !== ADMIN_PASSWORD) {
           toast("סיסמה שגויה");
           return;
         }
         $("#adminPanel").style.display = "block";
-        const rows = await selectAll();
-        renderTable(rows);
-        updateCount(rows);
+        try {
+          const rows = await selectAll();
+          renderTable(rows);
+          updateCount(rows);
+        } catch (err) {
+          console.error(err);
+          toast("שגיאה בטעינת הסיכומים");
+        }
       });
+
+      // 🧨 איפוס כל ההזמנות לאירוע הנוכחי
+      async function resetEventRows() {
+        const pass = prompt("לאישור איפוס, הכנס שוב את סיסמת המנהל:");
+        if (pass !== ADMIN_PASSWORD) {
+          toast("סיסמה שגויה");
+          return;
+        }
+        if (
+          !confirm(
+            "למחוק את כל ההזמנות לאירוע הזה? הפעולה בלתי הפיכה."
+          )
+        ) {
+          return;
+        }
+
+        const u = new URL(REST);
+        u.searchParams.set("event_id", "eq." + EVENT_ID);
+
+        try {
+          const r = await fetch(u, {
+            method: "DELETE",
+            headers,
+          });
+          if (!r.ok) throw new Error("שגיאה באיפוס: " + r.status);
+          toast("כל ההזמנות לאירוע הזה נמחקו");
+          // לרענן את הטבלה
+          const rows = await selectAll();
+          renderTable(rows);
+          updateCount(rows);
+        } catch (err) {
+          console.error(err);
+          toast("שגיאה באיפוס ההזמנות");
+        }
+      }
+
+      const resetBtn = document.getElementById("resetBtn");
+      if (resetBtn) {
+        resetBtn.addEventListener("click", resetEventRows);
+      }
 
       function updateCount(r) {
         const y = r.filter((x) => x.attending).length;
-        $("#countLabel").textContent = `סה"כ ${r.length} | מגיעים ${y} | לא ${
+        $("#countLabel").textContent = `סה\"כ ${r.length} | מגיעים ${y} | לא ${
           r.length - y
         }`;
       }
