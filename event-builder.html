@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>יצירת אירוע חדש</title>
+
+  <style>
+    body {
+      background: #0f172a;
+      color: white;
+      font-family: "Heebo", sans-serif;
+      padding: 24px;
+      max-width: 600px;
+      margin: auto;
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 10px;
+      border: none;
+      font-size: 16px;
+    }
+    input {
+      background: #1e293b;
+      color: white;
+    }
+    button {
+      background: #3b82f6;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .box {
+      background: #1e293b;
+      padding: 18px;
+      margin-top: 20px;
+      border-radius: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>יצירת אירוע חדש 🎉</h1>
+
+  <label>שם האירוע</label>
+  <input id="title" placeholder="למשל: ערב בשרים" />
+
+  <label>תאריך</label>
+  <input id="date" placeholder="18.11.2025" />
+
+  <label>מיקום</label>
+  <input id="loc" placeholder="תל אביב, יגאל אלון 50 קומה 10" />
+
+  <label>סיסמת מנהל</label>
+  <input id="admin" placeholder="בחר סיסמה" />
+
+  <button id="make">צור אירוע</button>
+
+  <div id="output" class="box" style="display:none"></div>
+
+  <script>
+    document.getElementById("make").addEventListener("click", () => {
+      const title = document.getElementById("title").value.trim();
+      const date = document.getElementById("date").value.trim();
+      const loc = document.getElementById("loc").value.trim() || "תל אביב, יגאל אלון 50 קומה 10";
+      const admin = document.getElementById("admin").value.trim();
+
+      if (!title || !date || !admin) {
+        alert("מלא את כל השדות");
+        return;
+      }
+
+      const event_id = crypto.randomUUID();
+
+      const link = `rsvp.html?event_id=${event_id}&title=${encodeURIComponent(title)}&date=${encodeURIComponent(date)}&loc=${encodeURIComponent(loc)}&admin_pwd=${encodeURIComponent(admin)}`;
+
+      const box = document.getElementById("output");
+      box.style.display = "block";
+      box.innerHTML = `
+        <h3>הלינק שנוצר:</h3>
+        <input value="${link}" style="width:100%;padding:10px;background:#0f172a;color:white" />
+        <p>שלח את הלינק הזה למוזמנים</p>
+      `;
+    });
+  </script>
+
+</body>
+</html>
